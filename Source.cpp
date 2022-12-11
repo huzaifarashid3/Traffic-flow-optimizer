@@ -53,8 +53,8 @@ private:
 		list<node*> path;
 		list<node*>::iterator goal;
 
-		Car(olc::vf2d pos = { 0,0 }, olc::vf2d vel = { 5,5 }, int radius = 4, node* start = NULL, node* end = NULL):
-			ID(0), pos(pos), vel(vel), radius(radius), start(start), end(end), size({ 4,4 }), sensor_size({2,2}) {}
+		Car(int ID = 0, olc::vf2d pos = { 0,0 }, olc::vf2d vel = { 1,1 }, int radius = 4, node* start = NULL, node* end = NULL):
+			ID(ID), pos(pos), vel(vel), radius(radius), start(start), end(end), size({ 4,4 }), sensor_size({7,7}) {}
 		
 	};
 	node** nodes = NULL;
@@ -62,6 +62,8 @@ private:
 	node* destination;
 	node* spawnHere;
 	vector<TrafficLight> tLight;
+
+	bool collision = false;
 
 public:
 	Game()
@@ -93,7 +95,7 @@ public:
 		map[13]  += "         du    du   ";
 		map[14]  += "         du    du   ";
 		map[15]  += "llllllllloolllloolll";
-		map[16] +=  "rrrrrrrrroorrrrrrrrr";
+		map[16]  += "rrrrrrrrroorrrrrrrrr";
 		map[17]  += "         du         ";
 		map[18]  += "         du         ";
 		map[19]  += "         du         ";
@@ -110,18 +112,19 @@ public:
 
 		for (int i = 0; i < 8; i++)
 		{
-			car.push_back(Car());
+			car.push_back(Car(i));
 		}
 		
 		BuildNeighbours();
 
-		car[1].start = &nodes[4][0];
-		car[1].end = &nodes[16][19];
-		car[1].pos = car[1].start->pos;
 
 		car[0].start = &nodes[3][19];
 		car[0].end = &nodes[19][9];
 		car[0].pos = car[0].start->pos;
+
+		car[1].start = &nodes[4][0];
+		car[1].end = &nodes[16][19];
+		car[1].pos = car[1].start->pos;
 		
 		car[2].start = &nodes[19][10];
 		car[2].end = &nodes[4][19];
@@ -224,6 +227,8 @@ public:
 		{
 			DrawCar(n);		
 		}
+
+		//DrawTest();
 
 	}
 
@@ -510,35 +515,35 @@ public:
 		if (!car.path.empty())
 		{
 
+
 			if (((*car.goal)->pos - car.pos).mag2() < 0.1)
 			{
 				if (next(car.goal, 1) != car.path.end())
 					car.goal++;
 			}
 			else
-			{
+			{		
+				collision = false;
 
-					olc::vf2d direction = ((*car.goal)->pos - car.pos).norm();			
-					float angle = atan2(direction.y, direction.x);
-				
-					car.pos1 = { cosf(angle + 0.0f), sinf(angle + 0.0f) };
-					car.pos2 = { cosf(angle - 2 * M_PI / 3), sinf(angle - 2 * M_PI / 3) };
-					car.pos3 = { cosf(angle + 2 * M_PI / 3), sinf(angle + 2 * M_PI / 3) };
+				olc::vf2d direction = ((*car.goal)->pos - car.pos).norm();
+				float angle = atan2(direction.y, direction.x);
 
-					car.pos1 = car.pos1 * car.size / size;
-					car.pos2 = car.pos2 * car.size / size;
-					car.pos3 = car.pos3 * car.size / size;
+				car.pos1 = { cosf(angle + 0.0f), sinf(angle + 0.0f) };
+				car.pos2 = { cosf(angle - 2 * M_PI / 3), sinf(angle - 2 * M_PI / 3) };
+				car.pos3 = { cosf(angle + 2 * M_PI / 3), sinf(angle + 2 * M_PI / 3) };
 
-					car.sensor = car.pos1 * car.sensor_size;
+				car.pos1 = car.pos1 * car.size / size;
+				car.pos2 = car.pos2 * car.size / size;
+				car.pos3 = car.pos3 * car.size / size;
 
-				if (!checkCollision(car))
-				{
-					car.pos += direction * car.vel * ftime;
-				}
+				car.sensor = { cosf(angle + 0.0f), sinf(angle + 0.0f) };
+				car.sensor = car.sensor * car.sensor_size / size;
+
+				collision = checkCollision(car);
+				if (!collision)
+					car.pos += direction * car.vel * ftime;	
 			}
-
 		}
-		
 	}
 
 	void SolveAstar(Car &car)
@@ -619,14 +624,20 @@ public:
 
 		for (int y = 0; y < height; y++)
 			for (int x = 0; x < width; x++)
-				if (elements[int (car.sensor.y) +int( car.pos.y)][int(car.sensor.x) + int(car.pos.x)] == 'z')
+			{
+
+				olc::vi2d testPoint(car.pos.x  + car.sensor.x + 0.5, car.pos.y + car.sensor.y + 0.5);
+
+				if (elements[testPoint.y][testPoint.x] == 'z')
 					return true;
+
+			}
 
 		for (auto& n : this->car)
 		{
-			if (&car == &n)
+			if (car.ID == n.ID)
 				continue;
-			if (CheckOverlap(car.sensor, n.pos, n.radius/size.x))
+			if (CheckOverlap(car.sensor + car.pos + olc::vf2d(0.5 , 0.5), n.pos + olc::vf2d(0.5, 0.5), float(n.radius) / size.x))
 			{
 				return true;
 			}
@@ -655,6 +666,8 @@ public:
 					FillRect(nodes[y][x].pos * size + border, size - 2 * border, olc::DARK_GREY);
 				else
 					FillRect(nodes[y][x].pos * size + border, size - 2 * border, olc::DARK_BLUE);
+				
+				//Draw(olc::vf2d(x,y) * size, olc::YELLOW);
 			}
 	}
 
@@ -699,6 +712,7 @@ public:
 		FillTriangle((car.pos + car.pos1) * size + size/2, (car.pos + car.pos2) * size + size / 2, (car.pos + car.pos3) * size + size / 2,olc::MAGENTA);
 		//DrawLine((car.sensor + car.pos)*size + size/2, car.pos * size + size / 2);
 		Draw((car.sensor + car.pos) * size + size / 2,olc::CYAN);
+		//Draw((car.pos) * size + size / 2,olc::CYAN);
 		//((car.sensor + car.pos)*size + size/2);
 	}
 
@@ -717,6 +731,28 @@ public:
 
 	}	
 	
+	void DrawTest()
+	{
+
+		olc::vi2d  abc(car[0].pos.x, car[0].sensor.y + car[0].pos.y);
+		olc::vf2d abcd(car[0].pos.x, car[0].sensor.y + car[0].pos.y);
+
+		
+		
+		DrawString(olc::vi2d(1, 1) * size + border, abc.str());
+		DrawString(olc::vi2d(1, 2) * size + border, abcd.str());
+		
+		
+		
+
+
+		/*DrawString(olc::vi2d(1, 2) * size + border, to_string(int(car[0].pos.x)));
+		DrawString(olc::vi2d(1, 3) * size + border, to_string((car[0].pos.x)));
+
+		DrawString(olc::vi2d(1, 5) * size + border, to_string(int(car[0].pos.y)));
+		DrawString(olc::vi2d(1, 6) * size + border, to_string((car[0].pos.y)));*/
+	}
+
 	bool OnUserDestroy() override
 	{
 		for (int i = 0; i < height; i++)
