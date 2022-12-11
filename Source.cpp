@@ -3,13 +3,14 @@
 #include <math.h>
 #include <iostream>
 #include "olcPixelGameEngine.h"
-using namespace std;
 #include <vector>
+using namespace std;
 
-class TLightSystem
+class TrafficLight
 {
-	   
+
 };
+
 
 
 class Game :public olc::PixelGameEngine
@@ -19,10 +20,9 @@ private:
 	string elements[20];
 	int width = 20; 
 	int height = 20; 
-
 	olc::vi2d size = { 18,18}; 
 	olc::vi2d border = { 1,1 }; 
-	olc::vi2d padding = { 12,12 }; 
+	olc::vi2d padding = { 0,0 }; 
 	olc::vi2d selected;
 	struct node
 	{
@@ -36,13 +36,16 @@ private:
 	class Car
 	{
 	public:
+
 		int ID;
 		int radius;
 		olc::vf2d pos;
+		olc::vf2d sensor;
 		olc::vf2d pos1;
 		olc::vf2d pos2;
 		olc::vf2d pos3;
 		olc::vf2d size;
+		olc::vf2d sensor_size;
 
 		olc::vf2d vel;
 		node* start;
@@ -50,15 +53,15 @@ private:
 		list<node*> path;
 		list<node*>::iterator goal;
 
-		Car(olc::vf2d pos = { 0,0 }, olc::vf2d vel = { 5,5 }, int radius = 2, node* start = NULL, node* end = NULL):
-			pos(pos),vel(vel), radius(radius), start(start), end(end), size({4,4}) {}
+		Car(olc::vf2d pos = { 0,0 }, olc::vf2d vel = { 5,5 }, int radius = 4, node* start = NULL, node* end = NULL):
+			ID(0), pos(pos), vel(vel), radius(radius), start(start), end(end), size({ 4,4 }), sensor_size({2,2}) {}
 		
 	};
 	node** nodes = NULL;
 	vector<Car> car;
-	olc::vf2d playPos = { 22,4 };
 	node* destination;
 	node* spawnHere;
+	vector<TrafficLight> tLight;
 
 public:
 	Game()
@@ -140,7 +143,7 @@ public:
 		car[6].end = &nodes[0][10];
 		car[6].pos = car[6].start->pos;
 		
-		car[7].start = &nodes[19][10];
+		car[7].start = &nodes[17][10];
 		car[7].end = &nodes[10][15];
 		car[7].pos = car[7].start->pos;
 
@@ -202,21 +205,13 @@ public:
 	{
 
 		Clear(olc::BLACK);
-
-		DrawString((playPos -  olc::vf2d(0,1))* size, "press SPACE \nto play");
-		if (GetKey(olc::Key::SPACE).bReleased)
-		{
-				FillRect(playPos * size, size, olc::DARK_GREEN);
-		}
-		else
-			FillRect(playPos * size, size, olc::DARK_GREY);
-
 		
 		DrawMap();
 
 		DrawDirections();
 
 		DrawElements();
+
 
 		for (auto& n : car)
 		{
@@ -309,6 +304,11 @@ public:
 			{
 				elements[selected.y][selected.x] = 'z';
 			}
+
+			if (GetKey(olc::Key::C).bHeld)
+			{
+				elements[selected.y][selected.x] = 'c';
+			}
 		}
 	}
 
@@ -324,6 +324,7 @@ public:
 		}
 
 	}
+
 
 	
 	
@@ -506,13 +507,6 @@ public:
 	void MoveCar(Car& car, float ftime)
 	{
 
-		auto CheckOverlap = [](olc::vf2d pos1, olc::vf2d pos2, float radius)
-		{
-			if ((pos1 - pos2).mag2() < radius * radius)
-				return true;
-			return false;
-		};
-
 		if (!car.path.empty())
 		{
 
@@ -523,18 +517,24 @@ public:
 			}
 			else
 			{
-				olc::vf2d direction = ((*car.goal)->pos - car.pos).norm();			
-				float angle = atan2(direction.y, direction.x);
+
+					olc::vf2d direction = ((*car.goal)->pos - car.pos).norm();			
+					float angle = atan2(direction.y, direction.x);
 				
-				car.pos1 = { cosf(angle + 0.0f), sinf(angle + 0.0f) };
-				car.pos2 = { cosf(angle - 2 * M_PI / 3), sinf(angle - 2 * M_PI / 3) };
-				car.pos3 = { cosf(angle + 2 * M_PI / 3), sinf(angle + 2 * M_PI / 3) };
+					car.pos1 = { cosf(angle + 0.0f), sinf(angle + 0.0f) };
+					car.pos2 = { cosf(angle - 2 * M_PI / 3), sinf(angle - 2 * M_PI / 3) };
+					car.pos3 = { cosf(angle + 2 * M_PI / 3), sinf(angle + 2 * M_PI / 3) };
 
-				car.pos1 = car.pos1 * car.size / size;
-				car.pos2 = car.pos2 * car.size / size;
-				car.pos3 = car.pos3 * car.size / size;
+					car.pos1 = car.pos1 * car.size / size;
+					car.pos2 = car.pos2 * car.size / size;
+					car.pos3 = car.pos3 * car.size / size;
 
-				car.pos += direction * car.vel * ftime;
+					car.sensor = car.pos1 * car.sensor_size;
+
+				if (!checkCollision(car))
+				{
+					car.pos += direction * car.vel * ftime;
+				}
 			}
 
 		}
@@ -606,6 +606,34 @@ public:
 		return;
 	}
 
+	bool checkCollision(Car &car)
+	{
+
+		auto CheckOverlap = [](olc::vf2d point, olc::vf2d center, float radius)
+		{
+			if ((point - center).mag2() < radius * radius)
+				return true;
+			return false;
+		};
+
+
+		for (int y = 0; y < height; y++)
+			for (int x = 0; x < width; x++)
+				if (elements[int (car.sensor.y) +int( car.pos.y)][int(car.sensor.x) + int(car.pos.x)] == 'z')
+					return true;
+
+		for (auto& n : this->car)
+		{
+			if (&car == &n)
+				continue;
+			if (CheckOverlap(car.sensor, n.pos, n.radius/size.x))
+			{
+				return true;
+			}
+
+		}
+		return false;
+	}
 	
 	
 	
@@ -636,7 +664,7 @@ public:
 			for (int x = 0; x < width; x++)
 			{
 				if (elements[y][x] == 'z')
-					FillRect(nodes[y][x].pos * size + border, size - 2 * border, olc::DARK_RED);
+					FillRect(nodes[y][x].pos * size + border, size - 2 * border, olc::DARK_YELLOW);
 			}
 	}
 	
@@ -669,7 +697,9 @@ public:
 	void DrawCar(Car& car)
 	{
 		FillTriangle((car.pos + car.pos1) * size + size/2, (car.pos + car.pos2) * size + size / 2, (car.pos + car.pos3) * size + size / 2,olc::MAGENTA);
-		//FillCircle(car.pos * size + size / 2, car.radius, olc::MAGENTA);
+		//DrawLine((car.sensor + car.pos)*size + size/2, car.pos * size + size / 2);
+		Draw((car.sensor + car.pos) * size + size / 2,olc::CYAN);
+		//((car.sensor + car.pos)*size + size/2);
 	}
 
 	void DrawDirections()
@@ -685,11 +715,7 @@ public:
 		FillRect(selected * size + border, size - 2 * border,olc::GREY);
 		SetPixelMode(olc::Pixel::NORMAL);
 
-	}
-
-
-	
-	
+	}	
 	
 	bool OnUserDestroy() override
 	{
@@ -703,8 +729,12 @@ public:
 int main(void)
 {
 	Game game;
-	if (game.Construct(500, 360, 2, 2))
+	if (game.Construct(360, 360, 2, 2))
 		game.Start();
 	return 0;
 }
 
+
+
+// i want my car to have sensor in the direction of the travel
+// if they collide with a light, they dont move

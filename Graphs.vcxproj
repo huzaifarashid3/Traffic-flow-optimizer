@@ -127,7 +127,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Node.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
+    <ClInclude Include="TrafficLight.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source.cpp" />
