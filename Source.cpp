@@ -7,6 +7,8 @@
 using namespace std;
 
 
+
+
 class TrafficLight
 {
 public:
@@ -54,6 +56,9 @@ public:
 class Game :public olc::PixelGameEngine
 {
 private:
+
+	
+
 	int IDtracker = 0;
 	string map[20];
 	int elements[20][20] = { 0 };
@@ -90,10 +95,13 @@ private:
 		node* start;
 		node* end;
 		list<node*> path;
-		list<node*>::iterator goal;
+		//list<node*>::iterator goal;
 
 		Car(int ID = 0, node* start = NULL, node* end = NULL, olc::vf2d pos = { 0,0 }, olc::vf2d vel = { 6,6 }, int radius = 4):
-			ID(ID), pos(pos), vel(vel), radius(radius), start(start), end(end), size({ 4,4 }), sensor_size({7,7}) {}
+			ID(ID), pos(pos), vel(vel), radius(radius), start(start), end(end), size({ 4,4 }), sensor_size({7,7}) 
+		{
+			//goal = path.begin();
+		}
 		
 	};
 	node** nodes = NULL;
@@ -182,9 +190,11 @@ public:
 
 
 
+
 		//for (int i = 0; i < 20; i++)
 		//{
 		//	car.push_back(Car(i,StartArr[rand()%7], EndArr[rand() % 7]));
+		//	//GeneratePath(car.front());
 		//}
 
 		BuildNeighbours();
@@ -193,8 +203,8 @@ public:
 
 
 
-		tLight.push_back(TrafficLightSystem({8,4},3));
-		tLight.push_back(TrafficLightSystem({8,16},5));
+		tLight.push_back(TrafficLightSystem({8,4},1));
+		tLight.push_back(TrafficLightSystem({8,16},1));
 
 
 
@@ -240,14 +250,11 @@ public:
 	{
 		
 		gTimer += ftime;
-
-		
-
-		if (gTimer > 1.0f)
+		if (gTimer > 0.5f)
 		{
 
 
-			
+			SpawnCar();
 			gTimer = 0.0f;
 			
 			
@@ -263,19 +270,8 @@ public:
 		if (GetKey(olc::Key::SPACE).bReleased)
 		{
 			
-			SpawnCar();
-			for (auto& n : car)
-			{
-				GeneratePath(n);
-			}
 		}
 
-
-		if (GetKey(olc::Key::M).bReleased)
-		{
-		
-			
-		}
 
 
 		int i = 0;
@@ -314,7 +310,7 @@ public:
 		for (auto& n : car)
 		{
 			DrawStartEnd(n);
-			DrawPath(n);
+			//DrawPath(n);
 			
 		}
 
@@ -333,7 +329,7 @@ public:
 			DrawCar(n);		
 		}
 
-		//DrawTest();
+		DrawTest();
 
 
 		DrawString(olc::vi2d(1, 1) * size, to_string(gTimer));
@@ -466,7 +462,7 @@ public:
 		{
 			cout << n->pos.str() << endl;
 		}
-		car.goal = car.path.begin();
+		//car.goal = car.path.begin();
 
 	}
 
@@ -619,16 +615,13 @@ public:
 	{	
 		if (!car.path.empty())
 		{		
-			if (((*car.goal)->pos - car.pos).mag2() < 0.1)
+			if ((car.path.front()->pos - car.pos).mag2() < 0.1)
 			{
-				if (next(car.goal, 1) != car.path.end())
-					car.goal = next(car.goal, 1);
-				else if (next(car.goal, 1) == car.path.end())
-					this->car.erase(this->car.begin() + counter);
+				car.path.pop_front();
 			}
 			else
 			{
-				olc::vf2d direction = ((*car.goal)->pos - car.pos).norm();
+				olc::vf2d direction = (car.path.front()->pos - car.pos).norm();
 				float angle = atan2(direction.y, direction.x);
 
 				car.pos1 = { cosf(angle + 0.0f), sinf(angle + 0.0f) };
@@ -648,13 +641,11 @@ public:
 
 			}
 		}
+		else if (this->car.begin() + counter < this->car.end())
+		{
+			this->car.erase(this->car.begin() + counter);
+		}
 	}
-
-
-
-
-		
-
 
 	void SolveAstar(Car &car)
 	{
@@ -775,8 +766,9 @@ public:
 
 	void SpawnCar()
 	{
-		car.push_back(Car(IDtracker++, StartArr[rand() % 7], EndArr[rand() % 7]));
-	//	GeneratePath(car.back());
+		Car c(IDtracker++, StartArr[rand() % 7], EndArr[rand() % 7]);
+		car.push_back(c);
+		GeneratePath(car.back());
 	}
 	
 
@@ -867,23 +859,6 @@ public:
 	void DrawTest()
 	{
 
-		olc::vi2d  abc(car[0].pos.x, car[0].sensor.y + car[0].pos.y);
-		olc::vf2d abcd(car[0].pos.x, car[0].sensor.y + car[0].pos.y);
-
-		
-		
-		DrawString(olc::vi2d(1, 1) * size + border, abc.str());
-		DrawString(olc::vi2d(1, 2) * size + border, abcd.str());
-		
-		
-		
-
-
-		/*DrawString(olc::vi2d(1, 2) * size + border, to_string(int(car[0].pos.x)));
-		DrawString(olc::vi2d(1, 3) * size + border, to_string((car[0].pos.x)));
-
-		DrawString(olc::vi2d(1, 5) * size + border, to_string(int(car[0].pos.y)));
-		DrawString(olc::vi2d(1, 6) * size + border, to_string((car[0].pos.y)));*/
 	}
 	
 	void DrawTLight(TrafficLightSystem& tLight)

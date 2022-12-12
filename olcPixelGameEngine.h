@@ -3420,7 +3420,7 @@ namespace olc
 		while (bAtomActive)
 		{
 			// Run as fast as possible
-			while (bAtomActive) { olc_CoreUpdate(); }
+ 			while (bAtomActive) { olc_CoreUpdate(); }
 
 			// Allow the user to free resources if they have overrided the destroy function
 			if (!OnUserDestroy())
