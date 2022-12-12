@@ -6,18 +6,57 @@
 #include <vector>
 using namespace std;
 
+
 class TrafficLight
 {
+public:
+	olc::vf2d pos;
+	float timer;
+	int status; // 0 = green, 1 = red
 
 };
+
+class TrafficLightSystem
+{
+public:
+	TrafficLight arr[4];
+	olc::vf2d pos;
+	int currentGreen = 0;
+	float gTimer = 0.0f;
+	float maxTime = 3.0f;
+
+	TrafficLightSystem(olc::vf2d p = {8,4}, float t = 3.0f)
+	{
+
+		maxTime = t;
+		pos = p;
+		//right
+		arr[0].pos = pos;
+		arr[0].status = 0;
+		//up
+		arr[1].pos = pos + olc::vf2d(1, -2);
+		arr[1].status = 1;
+		//left
+		arr[2].pos = pos + olc::vf2d(3, -1);
+		arr[2].status = 1;
+		//down
+		arr[3].pos = pos + olc::vf2d(2, 1);
+		arr[3].status = 1;
+	}
+
+};
+
+
+
 
 
 
 class Game :public olc::PixelGameEngine
 {
 private:
+	int IDtracker = 0;
 	string map[20];
-	string elements[20];
+	int elements[20][20] = { 0 };
 	int width = 20; 
 	int height = 20; 
 	olc::vi2d size = { 18,18}; 
@@ -53,17 +92,18 @@ private:
 		list<node*> path;
 		list<node*>::iterator goal;
 
-		Car(int ID = 0, olc::vf2d pos = { 0,0 }, olc::vf2d vel = { 1,1 }, int radius = 4, node* start = NULL, node* end = NULL):
+		Car(int ID = 0, node* start = NULL, node* end = NULL, olc::vf2d pos = { 0,0 }, olc::vf2d vel = { 6,6 }, int radius = 4):
 			ID(ID), pos(pos), vel(vel), radius(radius), start(start), end(end), size({ 4,4 }), sensor_size({7,7}) {}
 		
 	};
 	node** nodes = NULL;
 	vector<Car> car;
-	node* destination;
-	node* spawnHere;
-	vector<TrafficLight> tLight;
+	node* StartArr[7];
+	node* EndArr[7];
+	float gTimer = 0.0f;
 
-	bool collision = false;
+
+	vector<TrafficLightSystem> tLight;
 
 public:
 	Game()
@@ -76,7 +116,8 @@ public:
 	{
 
 		for (int i = 0; i < height; i++)
-			elements[i] = "                    ";
+			for (int j = 0; j < width; j++)
+				elements[i][j] = 0;
 	
 		//           01234567890123456789  
 		map[0]   += "         du         ";
@@ -101,6 +142,7 @@ public:
 		map[19]  += "         du         ";
 
 
+
 		nodes = new node*[height];
 		for (int i = 0; i < height; i++)
 			nodes[i] = new node[width];
@@ -110,50 +152,64 @@ public:
 				nodes[y][x].pos = { float(x),float(y) };
 	
 
-		for (int i = 0; i < 8; i++)
-		{
-			car.push_back(Car(i));
-		}
+
+		StartArr[0] = &nodes[3][19];
+		EndArr[0] = &nodes[19][9];
+
+
+		StartArr[1] = &nodes[4][0];
+		EndArr[1] = &nodes[16][19];
+
 		
+		StartArr[2] = &nodes[19][10];
+		EndArr[2] = &nodes[4][19];
+
+
+		StartArr[3] = &nodes[0][9];
+		EndArr[3] = &nodes[15][0];
+
+
+		StartArr[4] = &nodes[16][0];
+		EndArr[4] = &nodes[0][10];
+
+
+		StartArr[5] = &nodes[15][19];
+		EndArr[5] = &nodes[3][0];
+
+		
+		StartArr[6] = &nodes[9][19];
+		EndArr[6] = &nodes[0][10];
+
+
+
+		//for (int i = 0; i < 20; i++)
+		//{
+		//	car.push_back(Car(i,StartArr[rand()%7], EndArr[rand() % 7]));
+		//}
+
 		BuildNeighbours();
 
 
-		car[0].start = &nodes[3][19];
-		car[0].end = &nodes[19][9];
-		car[0].pos = car[0].start->pos;
 
-		car[1].start = &nodes[4][0];
-		car[1].end = &nodes[16][19];
-		car[1].pos = car[1].start->pos;
-		
-		car[2].start = &nodes[19][10];
-		car[2].end = &nodes[4][19];
-		car[2].pos = car[2].start->pos;
 
-		car[3].start = &nodes[0][9];
-		car[3].end = &nodes[15][0];
-		car[3].pos = car[3].start->pos;
 
-		car[4].start = &nodes[16][0];
-		car[4].end = &nodes[0][10];
-		car[4].pos = car[4].start->pos;
+		tLight.push_back(TrafficLightSystem({8,4},3));
+		tLight.push_back(TrafficLightSystem({8,16},5));
 
-		car[5].start = &nodes[15][19];
-		car[5].end = &nodes[3][0];
-		car[5].pos = car[5].start->pos;
-		
-		car[6].start = &nodes[9][19];
-		car[6].end = &nodes[0][10];
-		car[6].pos = car[6].start->pos;
-		
-		car[7].start = &nodes[17][10];
-		car[7].end = &nodes[10][15];
-		car[7].pos = car[7].start->pos;
 
-		for (auto& n : car)
+
+		for (auto& t : tLight)
 		{
-			GeneratePath(n);
+
+			for (int i = 0; i < 4; i++)
+			{
+				olc::vi2d temp = t.arr[i].pos;
+				elements[temp.y][temp.x] = 1;
+			}
 		}
+
+		
+
 
 
 		return true;
@@ -176,12 +232,27 @@ public:
 	void Input()
 	{
 		selected = { (GetMousePos() + border) / size };
-		SelectStartEnd(car[0], olc::Key::A);
+		//SelectStartEnd(car[0], olc::Key::A);
 
 	}
 
 	void Update(float ftime)
 	{
+		
+		gTimer += ftime;
+
+		
+
+		if (gTimer > 1.0f)
+		{
+
+
+			
+			gTimer = 0.0f;
+			
+			
+		}
+
 
 		ModifyMap();
 
@@ -191,6 +262,8 @@ public:
 		//generate a path;
 		if (GetKey(olc::Key::SPACE).bReleased)
 		{
+			
+			SpawnCar();
 			for (auto& n : car)
 			{
 				GeneratePath(n);
@@ -198,10 +271,30 @@ public:
 		}
 
 
+		if (GetKey(olc::Key::M).bReleased)
+		{
+		
+			
+		}
+
+
+		int i = 0;
 		for (auto& n : car)
 		{
-			MoveCar(n, ftime);
+			MoveCar(n, ftime, i);
+			i++;
 		}
+
+
+		for (auto& t : tLight)
+		{
+			SwitchLights(t, ftime);
+		}
+
+
+		
+
+
 	}
 
 	void Render()
@@ -213,14 +306,26 @@ public:
 
 		DrawDirections();
 
-		DrawElements();
+
+
+
 
 
 		for (auto& n : car)
 		{
 			DrawStartEnd(n);
-		}	
+			DrawPath(n);
+			
+		}
+
 	
+		for (auto& t : tLight)
+		{
+			DrawTLight(t);
+		}
+
+
+	//	DrawElements();
 
 		
 		for (auto& n : car)
@@ -229,6 +334,11 @@ public:
 		}
 
 		//DrawTest();
+
+
+		DrawString(olc::vi2d(1, 1) * size, to_string(gTimer));
+
+		CurrentNoCars();
 
 	}
 
@@ -303,16 +413,12 @@ public:
 
 	void ModifyElements()
 	{
-		if (selected.x < width && selected.y < height)
+		for (auto& t : tLight)
 		{
-			if (GetKey(olc::Key::Z).bHeld)
+			for (int i = 0; i < 4; i++)
 			{
-				elements[selected.y][selected.x] = 'z';
-			}
-
-			if (GetKey(olc::Key::C).bHeld)
-			{
-				elements[selected.y][selected.x] = 'c';
+				olc::vi2d temp = t.arr[i].pos;
+				elements[temp.y][temp.x] = t.arr[i].status;
 			}
 		}
 	}
@@ -509,22 +615,19 @@ public:
 		}
 	}
 
-	void MoveCar(Car& car, float ftime)
-	{
-
+	void MoveCar(Car& car, float ftime, int counter)
+	{	
 		if (!car.path.empty())
-		{
-
-
+		{		
 			if (((*car.goal)->pos - car.pos).mag2() < 0.1)
 			{
 				if (next(car.goal, 1) != car.path.end())
-					car.goal++;
+					car.goal = next(car.goal, 1);
+				else if (next(car.goal, 1) == car.path.end())
+					this->car.erase(this->car.begin() + counter);
 			}
 			else
-			{		
-				collision = false;
-
+			{
 				olc::vf2d direction = ((*car.goal)->pos - car.pos).norm();
 				float angle = atan2(direction.y, direction.x);
 
@@ -539,12 +642,19 @@ public:
 				car.sensor = { cosf(angle + 0.0f), sinf(angle + 0.0f) };
 				car.sensor = car.sensor * car.sensor_size / size;
 
-				collision = checkCollision(car);
-				if (!collision)
-					car.pos += direction * car.vel * ftime;	
+
+				if (!checkCollision(car))
+					car.pos += direction * car.vel * ftime;
+
 			}
 		}
 	}
+
+
+
+
+		
+
 
 	void SolveAstar(Car &car)
 	{
@@ -569,7 +679,7 @@ public:
 		auto heuristic = [distance](node* a, node* b)
 		{
 			return distance(a, b);
-			//return 1;
+		   // return 1;
 		};
 
 		node* current = car.start;
@@ -628,8 +738,10 @@ public:
 
 				olc::vi2d testPoint(car.pos.x  + car.sensor.x + 0.5, car.pos.y + car.sensor.y + 0.5);
 
-				if (elements[testPoint.y][testPoint.x] == 'z')
-					return true;
+				if (elements[testPoint.y][testPoint.x] == 1)
+				{
+					return true;			
+				}
 
 			}
 
@@ -646,7 +758,28 @@ public:
 		return false;
 	}
 	
+	void SwitchLights(TrafficLightSystem& tLight, float ftime)
+	{
+
+		tLight.gTimer += ftime;
+		if (tLight.gTimer > tLight.maxTime)
+		{
+			tLight.arr[tLight.currentGreen].status = 1;
+			tLight.currentGreen = (tLight.currentGreen + 1) % 4;
+			tLight.arr[tLight.currentGreen].status = 0;
+			tLight.gTimer = 0.0f;
+		}
+
 	
+	}
+
+	void SpawnCar()
+	{
+		car.push_back(Car(IDtracker++, StartArr[rand() % 7], EndArr[rand() % 7]));
+	//	GeneratePath(car.back());
+	}
+	
+
 	
 	//RENDER FUNCTIONS
 	void DrawMap()
@@ -752,6 +885,19 @@ public:
 		DrawString(olc::vi2d(1, 5) * size + border, to_string(int(car[0].pos.y)));
 		DrawString(olc::vi2d(1, 6) * size + border, to_string((car[0].pos.y)));*/
 	}
+	
+	void DrawTLight(TrafficLightSystem& tLight)
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			FillRect(tLight.arr[i].pos * size, size, tLight.arr[i].status == 1 ? olc::RED: olc::GREEN);
+		}
+	}
+
+	void CurrentNoCars()
+	{
+		DrawString(olc::vi2d(2, 2) * size, to_string(car.size()));
+	}
 
 	bool OnUserDestroy() override
 	{
@@ -770,7 +916,3 @@ int main(void)
 	return 0;
 }
 
-
-
-// i want my car to have sensor in the direction of the travel
-// if they collide with a light, they dont move
