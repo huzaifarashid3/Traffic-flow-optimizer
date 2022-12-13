@@ -6,9 +6,6 @@
 #include <vector>
 using namespace std;
 
-
-
-
 class TrafficLight
 {
 public:
@@ -48,17 +45,9 @@ public:
 
 };
 
-
-
-
-
-
 class Game :public olc::PixelGameEngine
 {
 private:
-
-	
-
 	int IDtracker = 0;
 	string map[20];
 	int elements[20][20] = { 0 };
@@ -95,13 +84,9 @@ private:
 		node* start;
 		node* end;
 		list<node*> path;
-		//list<node*>::iterator goal;
 
 		Car(int ID = 0, node* start = NULL, node* end = NULL, olc::vf2d pos = { 0,0 }, olc::vf2d vel = { 6,6 }, int radius = 4):
-			ID(ID), pos(pos), vel(vel), radius(radius), start(start), end(end), size({ 4,4 }), sensor_size({7,7}) 
-		{
-			//goal = path.begin();
-		}
+			ID(ID), pos(pos), vel(vel), radius(radius), start(start), end(end), size({ 4,4 }), sensor_size({7,7}) {}
 		
 	};
 	node** nodes = NULL;
@@ -160,53 +145,25 @@ public:
 				nodes[y][x].pos = { float(x),float(y) };
 	
 
-
 		StartArr[0] = &nodes[3][19];
 		EndArr[0] = &nodes[19][9];
-
-
 		StartArr[1] = &nodes[4][0];
 		EndArr[1] = &nodes[16][19];
-
-		
 		StartArr[2] = &nodes[19][10];
 		EndArr[2] = &nodes[4][19];
-
-
 		StartArr[3] = &nodes[0][9];
 		EndArr[3] = &nodes[15][0];
-
-
 		StartArr[4] = &nodes[16][0];
 		EndArr[4] = &nodes[0][10];
-
-
 		StartArr[5] = &nodes[15][19];
 		EndArr[5] = &nodes[3][0];
-
-		
 		StartArr[6] = &nodes[9][19];
 		EndArr[6] = &nodes[0][10];
 
-
-
-
-		//for (int i = 0; i < 20; i++)
-		//{
-		//	car.push_back(Car(i,StartArr[rand()%7], EndArr[rand() % 7]));
-		//	//GeneratePath(car.front());
-		//}
-
 		BuildNeighbours();
 
-
-
-
-
 		tLight.push_back(TrafficLightSystem({8,4},1));
-		tLight.push_back(TrafficLightSystem({8,16},1));
-
-
+		tLight.push_back(TrafficLightSystem({8,16},2));
 
 		for (auto& t : tLight)
 		{
@@ -217,10 +174,6 @@ public:
 				elements[temp.y][temp.x] = 1;
 			}
 		}
-
-		
-
-
 
 		return true;
 	}
@@ -235,9 +188,6 @@ public:
 			return false;
 		return true;
 	}
-
-	
-	
 	
 	void Input()
 	{
@@ -252,27 +202,13 @@ public:
 		gTimer += ftime;
 		if (gTimer > 0.5f)
 		{
-
-
 			SpawnCar();
-			gTimer = 0.0f;
-			
-			
+			gTimer = 0.0f;		
 		}
-
 
 		ModifyMap();
 
 		ModifyElements();
-
-
-		//generate a path;
-		if (GetKey(olc::Key::SPACE).bReleased)
-		{
-			
-		}
-
-
 
 		int i = 0;
 		for (auto& n : car)
@@ -281,16 +217,10 @@ public:
 			i++;
 		}
 
-
 		for (auto& t : tLight)
 		{
 			SwitchLights(t, ftime);
 		}
-
-
-		
-
-
 	}
 
 	void Render()
