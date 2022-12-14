@@ -53,7 +53,7 @@ private:
 	int elements[20][20] = { 0 };
 	int width = 20; 
 	int height = 20; 
-	olc::vi2d size = { 18,18}; 
+	olc::vi2d size = { 36,36}; 
 	olc::vi2d border = { 1,1 }; 
 	olc::vi2d padding = { 0,0 }; 
 	olc::vi2d selected;
@@ -86,7 +86,7 @@ private:
 		list<node*> path;
 
 		Car(int ID = 0, node* start = NULL, node* end = NULL, olc::vf2d pos = { 0,0 }, olc::vf2d vel = { 6,6 }, int radius = 4):
-			ID(ID), pos(pos), vel(vel), radius(radius), start(start), end(end), size({ 4,4 }), sensor_size({7,7}) {}
+			ID(ID), pos(pos), vel(vel), radius(radius), start(start), end(end), size({ 8,8 }), sensor_size({12,12}) {}
 		
 	};
 	node** nodes = NULL;
@@ -94,8 +94,6 @@ private:
 	node* StartArr[7];
 	node* EndArr[7];
 	float gTimer = 0.0f;
-
-
 	vector<TrafficLightSystem> tLight;
 
 public:
@@ -146,18 +144,19 @@ public:
 	
 
 		StartArr[0] = &nodes[3][19];
-		EndArr[0] = &nodes[19][9];
 		StartArr[1] = &nodes[4][0];
-		EndArr[1] = &nodes[16][19];
 		StartArr[2] = &nodes[19][10];
-		EndArr[2] = &nodes[4][19];
 		StartArr[3] = &nodes[0][9];
-		EndArr[3] = &nodes[15][0];
 		StartArr[4] = &nodes[16][0];
-		EndArr[4] = &nodes[0][10];
 		StartArr[5] = &nodes[15][19];
-		EndArr[5] = &nodes[3][0];
 		StartArr[6] = &nodes[9][19];
+		
+		EndArr[0] = &nodes[19][9];
+		EndArr[1] = &nodes[16][19];
+		EndArr[2] = &nodes[4][19];
+		EndArr[3] = &nodes[15][0];
+		EndArr[4] = &nodes[0][10];
+		EndArr[5] = &nodes[3][0];
 		EndArr[6] = &nodes[0][10];
 
 		BuildNeighbours();
@@ -189,6 +188,8 @@ public:
 		return true;
 	}
 	
+
+
 	void Input()
 	{
 		selected = { (GetMousePos() + border) / size };
@@ -269,9 +270,6 @@ public:
 	}
 
 
-
-	
-	
 	//INPUT FUNCTIONS
 	void ModifyMap()
 	{
@@ -363,8 +361,6 @@ public:
 	}
 
 
-	
-	
 	
 	//UPDATE FUNCTIONS
 	void GeneratePath(Car& car)
@@ -487,22 +483,22 @@ public:
 				{
 					//act as a right
 					if (x>0 && x<width-1)
-						if (map[y][x - 1] == 'r' || map[y][x + 1] == 'r')
+						if (map[y][x - 1] == 'r' && map[y][x - 1] != ' ' || map[y][x + 1] == 'r' && map[y][x + 1] != ' ')
 							nodes[y][x].neighbours.push_back(&nodes[y][x + 1]);
-					
+
 					//act as a left
 					if (x > 0 && x < width - 1)
-						if (map[y][x + 1] == 'l' || map[y][x - 1] == 'l')
+						if (map[y][x + 1] == 'l' && map[y][x + 1] != ' ' || map[y][x - 1] == 'l' && map[y][x - 1] != ' ')
 							nodes[y][x].neighbours.push_back(&nodes[y][x - 1]);
-					
+
 					//act as a down
 					if (y > 0 && y < height - 1)
-						if (map[y - 1][x] == 'd' || map[y + 1][x] == 'd')
+						if (map[y - 1][x] == 'd' && map[y - 1][x] != ' ' || map[y + 1][x] == 'd' && map[y + 1][x] != ' ')
 							nodes[y][x].neighbours.push_back(&nodes[y + 1][x]);
-					
+
 					//act as a up
 					if (y > 0 && y < height - 1)
-						if (map[y+1][x] == 'u' || map[y - 1][x] == 'u')
+						if (map[y + 1][x] == 'u' && map[y + 1][x] != ' ' || map[y - 1][x] == 'u' && map[y - 1][x] != ' ')
 							nodes[y][x].neighbours.push_back(&nodes[y-1][x]);
 
 
@@ -663,6 +659,10 @@ public:
 				{
 					return true;			
 				}
+				if (map[testPoint.y][testPoint.x] == ' ')
+				{
+					return true;
+				}
 
 			}
 
@@ -816,7 +816,7 @@ public:
 int main(void)
 {
 	Game game;
-	if (game.Construct(360, 360, 2, 2))
+	if (game.Construct(720, 720, 1, 1))
 		game.Start();
 	return 0;
 }
